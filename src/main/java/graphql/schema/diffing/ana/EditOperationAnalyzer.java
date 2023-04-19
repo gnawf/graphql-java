@@ -345,7 +345,6 @@ public class EditOperationAnalyzer {
         String newValue = editOperation.getTargetVertex().get("value");
         boolean valueChanged = !oldValue.equals(newValue);
 
-
         Vertex appliedDirective = newSchemaGraph.getAppliedDirectiveForAppliedArgument(appliedArgument);
         Vertex container = newSchemaGraph.getAppliedDirectiveContainerForAppliedDirective(appliedDirective);
         if (container.isOfType(SchemaGraph.FIELD)) {
@@ -353,6 +352,10 @@ public class EditOperationAnalyzer {
             Vertex interfaceOrObjective = newSchemaGraph.getFieldsContainerForField(field);
             if (interfaceOrObjective.isOfType(SchemaGraph.OBJECT)) {
                 Vertex object = interfaceOrObjective;
+                if (isObjectAdded(object.getName())) {
+                    return;
+                }
+
                 AppliedDirectiveObjectFieldLocation location = new AppliedDirectiveObjectFieldLocation(object.getName(), field.getName());
                 if (valueChanged) {
                     AppliedDirectiveArgumentValueModification argumentValueModification = new AppliedDirectiveArgumentValueModification(location, newArgumentName, oldValue, newValue);
@@ -686,6 +689,10 @@ public class EditOperationAnalyzer {
         Vertex fieldOrDirective = newSchemaGraph.getFieldOrDirectiveForArgument(argument);
         if (fieldOrDirective.isOfType(SchemaGraph.DIRECTIVE)) {
             Vertex directive = fieldOrDirective;
+            if (isDirectiveAdded(directive.getName())) {
+                return;
+            }
+
             DirectiveModification directiveModification = getDirectiveModification(directive.getName());
             directiveModification.getDetails().add(new DirectiveArgumentRename(oldName, newName));
         } else {
@@ -695,11 +702,17 @@ public class EditOperationAnalyzer {
             Vertex fieldsContainerForField = newSchemaGraph.getFieldsContainerForField(field);
             if (fieldsContainerForField.isOfType(SchemaGraph.OBJECT)) {
                 Vertex object = fieldsContainerForField;
+                if (isObjectAdded(object.getName())) {
+                    return;
+                }
                 ObjectModification objectModification = getObjectModification(object.getName());
                 objectModification.getDetails().add(new ObjectFieldArgumentRename(fieldName, oldName, newName));
             } else {
                 assertTrue(fieldsContainerForField.isOfType(SchemaGraph.INTERFACE));
                 Vertex interfaze = fieldsContainerForField;
+                if (isInterfaceAdded(interfaze.getName())) {
+                    return;
+                }
                 InterfaceModification interfaceModification = getInterfaceModification(interfaze.getName());
                 interfaceModification.getDetails().add(new InterfaceFieldArgumentRename(fieldName, oldName, newName));
             }
@@ -1205,6 +1218,17 @@ public class EditOperationAnalyzer {
             Vertex field = fieldOrDirective;
             Vertex objectOrInterface = newSchemaGraph.getFieldsContainerForField(field);
 
+            if (objectOrInterface.isOfType(SchemaGraph.OBJECT)) {
+                if (isObjectAdded(objectOrInterface.getName())) {
+                    return;
+                }
+            } else {
+                assertTrue(objectOrInterface.isOfType(SchemaGraph.INTERFACE));
+                if (isInterfaceAdded(objectOrInterface.getName())) {
+                    return;
+                }
+            }
+
             String oldDefaultValue = getDefaultValueFromEdgeLabel(editOperation.getSourceEdge());
             String newDefaultValue = getDefaultValueFromEdgeLabel(editOperation.getTargetEdge());
             if (!oldDefaultValue.equals(newDefaultValue)) {
@@ -1242,6 +1266,10 @@ public class EditOperationAnalyzer {
             assertTrue(fieldOrDirective.isOfType(SchemaGraph.DIRECTIVE));
             Vertex directive = fieldOrDirective;
 
+            if (isDirectiveAdded(directive.getName())) {
+                return;
+            }
+
             String oldDefaultValue = getDefaultValueFromEdgeLabel(editOperation.getSourceEdge());
             String newDefaultValue = getDefaultValueFromEdgeLabel(editOperation.getTargetEdge());
             if (!oldDefaultValue.equals(newDefaultValue)) {
@@ -1278,6 +1306,11 @@ public class EditOperationAnalyzer {
         Vertex container = newSchemaGraph.getFieldsContainerForField(field);
         if (container.isOfType(SchemaGraph.OBJECT)) {
             Vertex object = container;
+
+            if (isObjectAdded(object.getName())) {
+                return;
+            }
+
             ObjectModification objectModification = getObjectModification(object.getName());
             String fieldName = field.getName();
             String oldType = getTypeFromEdgeLabel(editOperation.getSourceEdge());
@@ -1286,6 +1319,11 @@ public class EditOperationAnalyzer {
         } else {
             assertTrue(container.isOfType(SchemaGraph.INTERFACE));
             Vertex interfaze = container;
+
+            if (isInterfaceAdded(interfaze.getName())) {
+                return;
+            }
+
             InterfaceModification interfaceModification = getInterfaceModification(interfaze.getName());
             String fieldName = field.getName();
             String oldType = getTypeFromEdgeLabel(editOperation.getSourceEdge());
@@ -1324,7 +1362,6 @@ public class EditOperationAnalyzer {
             Vertex interfaceVertex = deletedEdge.getTo();
             ObjectInterfaceImplementationDeletion deletion = new ObjectInterfaceImplementationDeletion(interfaceVertex.getName());
             getObjectModification(objectVertex.getName()).getDetails().add(deletion);
-
         } else {
             assertTrue(from.isOfType(SchemaGraph.INTERFACE));
             if (isInterfaceDeleted(from.getName())) {
@@ -1335,7 +1372,6 @@ public class EditOperationAnalyzer {
             InterfaceInterfaceImplementationDeletion deletion = new InterfaceInterfaceImplementationDeletion(interfaceVertex.getName());
             getInterfaceModification(interfaceFromVertex.getName()).getDetails().add(deletion);
         }
-
     }
 
     private void newInterfaceAddedToInterfaceOrObject(Edge newEdge) {
@@ -1359,7 +1395,6 @@ public class EditOperationAnalyzer {
             InterfaceInterfaceImplementationAddition addition = new InterfaceInterfaceImplementationAddition(interfaceVertex.getName());
             getInterfaceModification(interfaceFromVertex.getName()).getDetails().add(addition);
         }
-
     }
 
     private boolean isDirectiveAdded(String name) {
